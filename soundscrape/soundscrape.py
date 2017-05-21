@@ -365,14 +365,14 @@ def download_track(track, album_name=u'', keep_previews=False, folders=False, fi
 
     return filename
 
-def resolve_time_limit(time_limit=None):
-    if time_limit is None:
-        return None
+def resolve_time_limit(time_limit=""):
+    if not time_limit:
+        return 0
     return sum(int(x) * 60 ** i for i,x in enumerate(reversed(time_limit.split(":"))))
 
 def printable_duration(duration=None):
-    if duration is None:
-        return None
+    if not duration:
+        return ""
     duration_temp = duration/1000
     return str(timedelta(seconds=duration_temp))
 
@@ -444,9 +444,10 @@ def download_tracks(client, tracks, num_tracks=sys.maxsize, downloadable=False, 
                     puts_safe(colored.yellow("Track already downloaded: ") + colored.white(track_title))
                     continue
 
-                if track_duration > resolve_time_limit(time_limit)*1000:
-                    puts_safe(colored.yellow("Track (") + colored.white(track_title) + colored.yellow(") longer than set time limit (was ") + colored.red(printable_duration(track_duration)) + colored.yellow(" with limit ") + colored.red(printable_duration(resolve_time_limit(time_limit)*1000)) + colored.yellow(")"))
-                    continue
+                if not not time_limit:
+                    if track_duration > resolve_time_limit(time_limit)*1000 and resolve_time_limit(time_limit) is not 0:
+                        puts_safe(colored.yellow("Track (") + colored.white(track_title) + colored.yellow(") longer than set time limit (was ") + colored.red(printable_duration(track_duration)) + colored.yellow(" with limit ") + colored.red(printable_duration(resolve_time_limit(time_limit)*1000)) + colored.yellow(")"))
+                        continue
 
                 puts_safe(colored.green("Downloading") + colored.white(": " + track['title']))
                 if track.get('direct', False):
