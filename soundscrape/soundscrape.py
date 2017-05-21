@@ -290,7 +290,10 @@ def process_soundcloud(vargs):
                                 filenames.append(filename)
 
         if not aggressive:
-            filenames = download_tracks(client, tracks, num_tracks, vargs['downloadable'], vargs['folders'], vargs['path'], vargs['time_limit'],
+            time_limit = ''
+            if 'time_limit' in vargs:
+                time_limit = vargs['time_limit']
+            filenames = download_tracks(client, tracks, num_tracks, vargs['downloadable'], vargs['folders'], vargs['path'], time_limit,
                                         id3_extras=id3_extras)
 
     if vargs['open']:
