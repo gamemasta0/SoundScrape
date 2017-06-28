@@ -9,6 +9,7 @@ import requests
 import soundcloud
 import sys
 import urllib
+import glob
 
 from clint.textui import colored, puts, progress
 from datetime import datetime, timedelta
@@ -81,6 +82,10 @@ def main():
                         help='Keep 30-second preview tracks')
     parser.add_argument('-v', '--version', action='store_true', default=False,
                         help='Display the current version of SoundScrape')
+    parser.add_argument('-A', '--avoid-duplicates', action='store_true', default=False,
+                        help='Avoids downloading files that have similar filenames to existing files in the working directory, asks for desired behavior when encountered')
+    parser.add_argument('-s', '--avoid-duplicates-strong', action='store_true', default=False,
+                        help='Avoids downloading files that have similar filenames to existing files in the working directory, automatically skips downloading')
 
     args = parser.parse_args()
     vargs = vars(args)
@@ -293,7 +298,7 @@ def process_soundcloud(vargs):
             time_limit = ''
             if 'time_limit' in vargs:
                 time_limit = vargs['time_limit']
-            filenames = download_tracks(client, tracks, num_tracks, vargs['downloadable'], vargs['folders'], vargs['path'], time_limit,
+            filenames = download_tracks(client, tracks, num_tracks, vargs['downloadable'], vargs['folders'], vargs['path'], time_limit, vargs['avoid_duplicates'], vargs['avoid_duplicates_strong'],
                                         id3_extras=id3_extras)
 
     if vargs['open']:
@@ -379,7 +384,7 @@ def printable_duration(duration=None):
     duration_temp = duration/1000
     return str(timedelta(seconds=duration_temp))
 
-def download_tracks(client, tracks, num_tracks=sys.maxsize, downloadable=False, folders=False, custom_path='', time_limit=None, id3_extras={}):
+def download_tracks(client, tracks, num_tracks=sys.maxsize, downloadable=False, folders=False, custom_path='', time_limit=None, avoid_duplicates=False, avoid_duplicates_strong=False, id3_extras={}):
     """
     Given a list of tracks, iteratively download all of them.
 
@@ -443,9 +448,37 @@ def download_tracks(client, tracks, num_tracks=sys.maxsize, downloadable=False, 
                 else:
                     track_filename = join(custom_path, track_filename)
 
-                if exists(track_filename):
+                if exists(track_filename) or exists(track_filename[:-3] + 'wav'):
                     puts_safe(colored.yellow("Track already downloaded: ") + colored.white(track_title))
                     continue
+
+                if avoid_duplicates or avoid_duplicates_strong:
+                    globResults = glob.glob('*' + track_title + '*')
+                    if globResults:
+                        if not avoid_duplicates_strong:
+                            answer = "x"
+                            while not (answer.lower() == "y" or answer.lower() == "n"):
+                                puts_safe(colored.red("Similar filename(s) found:"))
+                                puts_safe(colored.white(track_filename))
+                                puts_safe(colored.red("vs existing files:"))
+                                for f in globResults: 
+                                    puts_safe(colored.white(f))
+        
+        
+                                puts_safe(colored.yellow("Would you like to download anyway? (y/n): "))
+                                answer = raw_input()
+                                if answer.lower() == "y":
+                                    puts_safe(colored.green("Continuing download..."))
+                                elif answer.lower() == "n":
+                                    puts_safe(colored.green("Download aborted"))
+                                else:
+                                    puts_safe(colored.red("Please only input \"y\" or \"n\""))
+                            if answer.lower() == "n":
+                                continue
+                        else:
+                            puts_safe(colored.green("Similar filename found for ") + colored.white(track_title) + colored.green(" Download aborted"))
+                            continue
+
 
                 if not not time_limit:
                     if track_duration > resolve_time_limit(time_limit)*1000 and resolve_time_limit(time_limit) is not 0:
